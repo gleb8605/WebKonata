@@ -1,0 +1,62 @@
+Kanata	0004
+C=	216
+
+I	0	0	0
+L	0	0	12000d918 iBC(r17)
+S	0	0	F
+C	1
+S	0	0	X
+
+I	1	1	0
+L	1	0	12000d91c r4 = iALU(r3, r2)
+S	1	0	F
+C	1
+S	1	0	X
+
+I	2	2	0
+L	2	0	12000d920 r5 = iALU(r4, r1)
+S	2	0	F
+C	1
+S	2	0	X
+
+I	3	3	0
+L	3	0	12000d924 r6 = iALU(r5, r2)
+S	3	0	F
+C	1
+S	3	0	X
+
+I	4	4	0
+L	4	0	12000d928 r7 = iALU(r6, r3)
+S	4	0	F
+C	1
+S	4	0	X
+
+I	5	5	0
+L	5	0	12000d92c r8 = iALU(r7, r4)
+S	5	0	F
+C	1
+S	5	0	X
+
+I	6	6	0
+L	6	0	12000d930 r9 = iALU(r8, r5)
+S	6	0	F
+C	1
+S	6	0	X
+
+I	7	7	0
+L	7	0	12000d934 r10 = iALU(r9, r6)
+S	7	0	F
+C	1
+S	7	0	X
+
+I	8	8	0
+L	8	0	12000d938 r11 = iALU(r10, r7)
+S	8	0	F
+C	1
+S	8	0	X
+
+I	9	9	0
+L	9	0	12000d93c r12 = iALU(r11, r8)
+S	9	0	F
+C	1
+S	9	0	X
