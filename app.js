@@ -1,232 +1,207 @@
 let allData = [];
+let searchQuery = ""; 
+
+const ROW_HEIGHT = 28;
+const HEADER_HEIGHT = 30;
+const LABEL_WIDTH = 550; 
 let cycleWidth = 50;
 
-document
-.getElementById("fileInput")
-.addEventListener("change", async e => {
+let minCycle = 0;
+let maxCycle = 0;
 
+let container;
+let scrollContainer;
+
+document.getElementById("fileInput").addEventListener("change", async e => {
     const file = e.target.files[0];
-
-    if(!file)
-        return;
+    if (!file) return;
 
     const text = await file.text();
-
     allData = parseKanata(text);
+    console.log("Instructions:", allData.length);
 
-    console.log(
-        "Instructions:",
-        allData.length
-    );
+    minCycle = Infinity;
+    maxCycle = 0;
 
-    draw(allData);
-
-    e.target.value = "";
-});
-
-document
-.getElementById("searchBox")
-.addEventListener("input", e => {
-
-    const query =
-        e.target.value
-            .trim()
-            .toLowerCase();
-
-    document
-        .querySelectorAll(".instRow")
-        .forEach(row => {
-
-            row.classList.remove(
-                "highlight"
-            );
-
-            if(query === "")
-                return;
-
-            if(
-                row.textContent
-                    .toLowerCase()
-                    .includes(query)
-            ){
-                row.classList.add(
-                    "highlight"
-                );
-            }
-        });
-});
-
-function draw(data){
-
-    const viewer =
-        document.getElementById("viewer");
-
-    viewer.innerHTML = "";
-
-    const MAX_INSTRUCTIONS = 2000;
-
-    if(data.length > MAX_INSTRUCTIONS){
-
-        console.warn(
-            `Showing first ${MAX_INSTRUCTIONS} instructions`
-        );
-
-        data =
-            data.slice(0, MAX_INSTRUCTIONS);
+    for (const inst of allData) {
+        for (const s of inst.stageList) {
+            if (s.cycle < minCycle) minCycle = s.cycle;
+            if (s.cycle > maxCycle) maxCycle = s.cycle;
+        }
     }
 
-    let minCycle = Infinity;
-    let maxCycle = -Infinity;
+    if (minCycle === Infinity) {
+        minCycle = 0;
+        maxCycle = 100;
+    }
 
-    data.forEach(inst => {
+    maxCycle += 5; 
 
-        inst.stageList.forEach(s => {
+    initViewer();
+    render();
+});
 
-            minCycle =
-                Math.min(minCycle, s.cycle);
+document.getElementById("searchBox").addEventListener("input", e => {
+    searchQuery = e.target.value.trim().toLowerCase();
+    render(); 
+});
 
-            maxCycle =
-                Math.max(maxCycle, s.cycle);
+function initViewer() {
+    const colCount = maxCycle - minCycle + 1;
+    document.documentElement.style.setProperty("--cycle-width", cycleWidth + "px");
 
-        });
+    container = document.getElementById("viewer");
+    container.innerHTML = "";
+
+    scrollContainer = document.createElement("div");
+    scrollContainer.style.position = "relative";
+    scrollContainer.style.height = (allData.length * ROW_HEIGHT + HEADER_HEIGHT) + "px";
+    
+    scrollContainer.style.minWidth = `calc(${LABEL_WIDTH}px + ${colCount} * var(--cycle-width))`;
+
+    container.appendChild(scrollContainer);
+
+    container.addEventListener("scroll", () => {
+        requestAnimationFrame(render);
     });
+}
 
-    document.documentElement.style.setProperty(
-        "--cycle-width",
-        cycleWidth + "px"
-    );
+function getVisibleRange(scrollTop, height) {
+    const start = Math.max(0, Math.floor((scrollTop - HEADER_HEIGHT) / ROW_HEIGHT));
+    const end = Math.min(allData.length, start + Math.ceil(height / ROW_HEIGHT) + 5);
+    return { start, end };
+}
 
-    const MAX_VISIBLE_CYCLES = 300;
+function render() {
+    if (!container) return;
 
-    if(maxCycle - minCycle > MAX_VISIBLE_CYCLES){
+    const scrollTop = container.scrollTop;
+    const scrollLeft = container.scrollLeft;
+    const height = container.clientHeight;
+    const width = container.clientWidth;
 
-        maxCycle =
-            minCycle + MAX_VISIBLE_CYCLES;
-    }
+    const { start, end } = getVisibleRange(scrollTop, height);
 
-    const header =
-        document.createElement("div");
+    const colCount = maxCycle - minCycle + 1;
+    const startCol = Math.max(0, Math.floor((scrollLeft - LABEL_WIDTH) / cycleWidth));
+    const endCol = Math.min(colCount, startCol + Math.ceil(width / cycleWidth) + 5);
 
-    header.className =
-        "headerRow";
+    scrollContainer.innerHTML = "";
+    const totalWidth = `calc(${LABEL_WIDTH}px + ${colCount} * var(--cycle-width))`;
 
-    const empty =
-        document.createElement("div");
+    const header = document.createElement("div");
+    header.className = "headerRow";
+    header.style.width = totalWidth;
 
-    empty.className =
-        "labelCell";
-
+    const empty = document.createElement("div");
+    empty.className = "labelCell";
     header.appendChild(empty);
 
-    for(let c=minCycle; c<=maxCycle; c++){
+    for (let i = startCol; i < endCol; i++) {
+        const c = minCycle + i;
+        if (c > maxCycle) break;
 
-        const cell =
-            document.createElement("div");
-
-        cell.className =
-            "cycleCell";
-
-        cell.textContent =
-            c;
-
+        const cell = document.createElement("div");
+        cell.className = "cycleCell";
+        cell.textContent = c;
+        cell.style.left = (LABEL_WIDTH + i * cycleWidth) + "px";
         header.appendChild(cell);
     }
+    scrollContainer.appendChild(header);
 
-    viewer.appendChild(header);
+    for (let i = start; i < end; i++) {
+        const inst = allData[i];
 
-    data.forEach((inst, index) => {
+        const row = document.createElement("div");
+        row.className = "instRow";
+        row.style.top = (HEADER_HEIGHT + i * ROW_HEIGHT) + "px";
+        row.style.width = totalWidth;
+        
+        row.style.backgroundColor = (i % 2 === 0) ? "#262c39" : "#222733";
 
-        const row =
-            document.createElement("div");
+        const textForSearch = `${inst.id} ${inst.text}`.toLowerCase();
+        row.dataset.text = textForSearch;
 
-        row.className =
-            "instRow";
+        if (searchQuery && textForSearch.includes(searchQuery)) {
+            row.classList.add("highlight");
+        }
 
-        const label =
-            document.createElement("div");
-
-        label.className =
-            "labelCell";
-
-        label.textContent =
-            `${index}: s${inst.id} (t${inst.tid}: r${inst.rid}): ${inst.text}`;
-
+        const label = document.createElement("div");
+        label.className = "labelCell";
+        label.textContent = `${i}: s${inst.id} (t${inst.tid}: r${inst.rid}): ${inst.text}`;
         row.appendChild(label);
 
-        for(let c=minCycle; c<=maxCycle; c++){
+        for (const s of inst.stageList) {
+            const cell = document.createElement("div");
+            cell.className = "cycleCell";
+            cell.textContent = s.stage;
+            
+            cell.style.left = (LABEL_WIDTH + (s.cycle - minCycle) * cycleWidth) + "px";
 
-            const cell =
-                document.createElement("div");
+            cell.dataset.stage = s.stage;
+            cell.dataset.cycle = s.cycle;
+            cell.dataset.instId = inst.id;
 
-            cell.className =
-                "cycleCell";
-
-            const stage =
-                inst.stages[c];
-
-            if(stage){
-
-                cell.textContent =
-                    stage;
-
-                cell.title =
-`Stage: ${stage}
-Cycle: ${c}
-Instruction: s${inst.id}`;
-
-                if(stage === "F")
-                    cell.classList.add("fetch");
-
-                if(stage === "X")
-                    cell.classList.add("execute");
-
-                if(stage === "R")
-                    cell.classList.add("retire");
-            }
+            if (s.stage === "F") cell.classList.add("fetch");
+            if (s.stage === "X") cell.classList.add("execute");
+            if (s.stage === "R") cell.classList.add("retire");
 
             row.appendChild(cell);
         }
 
-        viewer.appendChild(row);
-    });
+        scrollContainer.appendChild(row);
+    }
 }
 
 document.addEventListener("keydown", e => {
+    if (!allData.length || e.target.id === "searchBox") return;
 
-    if(!allData.length)
-        return;
+    const viewer = document.getElementById("viewer");
+    const SCROLL_STEP = 50;
 
-    const viewer =
-        document.getElementById("viewer");
-
-    if(
-        e.key === "+" ||
-        e.key === "=" ||
-        e.code === "NumpadAdd"
-    ){
+    if (e.key === "+" || e.key === "=" || e.code === "NumpadAdd") {
+        e.preventDefault();
         cycleWidth += 10;
-        draw(allData);
+        document.documentElement.style.setProperty("--cycle-width", cycleWidth + "px");
+        render(); 
     }
 
-    if(
-        e.key === "-" ||
-        e.key === "_" ||
-        e.code === "NumpadSubtract"
-    ){
-        cycleWidth =
-            Math.max(
-                30,
-                cycleWidth - 10
-            );
-
-        draw(allData);
+    if (e.key === "-" || e.key === "_" || e.code === "NumpadSubtract") {
+        e.preventDefault();
+        cycleWidth = Math.max(20, cycleWidth - 10);
+        document.documentElement.style.setProperty("--cycle-width", cycleWidth + "px");
+        render(); 
     }
 
-    if(e.key === "ArrowRight"){
-        viewer.scrollLeft += 100;
+    switch (e.key.toLowerCase()) {
+        case "arrowright": case "d": e.preventDefault(); viewer.scrollLeft += SCROLL_STEP; break;
+        case "arrowleft": case "a": e.preventDefault(); viewer.scrollLeft -= SCROLL_STEP; break;
+        case "arrowdown": case "s": e.preventDefault(); viewer.scrollTop += SCROLL_STEP; break;
+        case "arrowup": case "w": e.preventDefault(); viewer.scrollTop -= SCROLL_STEP; break;
+        case "home": e.preventDefault(); viewer.scrollLeft = 0; viewer.scrollTop = 0; break;
+        case "end": e.preventDefault(); viewer.scrollTop = viewer.scrollHeight; break;
     }
+});
 
-    if(e.key === "ArrowLeft"){
-        viewer.scrollLeft -= 100;
+const tooltip = document.getElementById("customTooltip");
+
+document.addEventListener("mouseover", e => {
+    if (e.target.classList.contains("cycleCell") && e.target.dataset.stage) {
+        const { stage, cycle, instId } = e.target.dataset;
+        tooltip.innerHTML = `Stage: ${stage}<br>Cycle: ${cycle}<br>Instruction: s${instId}`;
+        tooltip.classList.add("visible");
+    }
+});
+
+document.addEventListener("mousemove", e => {
+    if (tooltip.classList.contains("visible")) {
+        tooltip.style.left = (e.clientX + 15) + "px";
+        tooltip.style.top = (e.clientY + 15) + "px";
+    }
+});
+
+document.addEventListener("mouseout", e => {
+    if (e.target.classList.contains("cycleCell")) {
+        tooltip.classList.remove("visible");
     }
 });

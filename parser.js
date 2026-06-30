@@ -30,11 +30,9 @@ function parseKanata(text){
                 rid: p[2],
                 tid: p[3],
                 text: "",
-
-                // быстрый доступ по циклу
+                
                 stages: {},
 
-                // нужен для подсчета min/max циклов
                 stageList: []
             };
         }
