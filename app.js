@@ -152,3 +152,56 @@ function render() {
         scrollContainer.appendChild(row);
     }
 }
+
+document.addEventListener("keydown", e => {
+    if (!allData.length || e.target.id === "searchBox") return;
+
+    const viewer = document.getElementById("viewer");
+    const SCROLL_STEP = 50;
+
+    if (e.key === "+" || e.key === "=" || e.code === "NumpadAdd") {
+        e.preventDefault();
+        cycleWidth += 10;
+        document.documentElement.style.setProperty("--cycle-width", cycleWidth + "px");
+        render(); 
+    }
+
+    if (e.key === "-" || e.key === "_" || e.code === "NumpadSubtract") {
+        e.preventDefault();
+        cycleWidth = Math.max(20, cycleWidth - 10);
+        document.documentElement.style.setProperty("--cycle-width", cycleWidth + "px");
+        render(); 
+    }
+
+    switch (e.key.toLowerCase()) {
+        case "arrowright": case "d": e.preventDefault(); viewer.scrollLeft += SCROLL_STEP; break;
+        case "arrowleft": case "a": e.preventDefault(); viewer.scrollLeft -= SCROLL_STEP; break;
+        case "arrowdown": case "s": e.preventDefault(); viewer.scrollTop += SCROLL_STEP; break;
+        case "arrowup": case "w": e.preventDefault(); viewer.scrollTop -= SCROLL_STEP; break;
+        case "home": e.preventDefault(); viewer.scrollLeft = 0; viewer.scrollTop = 0; break;
+        case "end": e.preventDefault(); viewer.scrollTop = viewer.scrollHeight; break;
+    }
+});
+
+const tooltip = document.getElementById("customTooltip");
+
+document.addEventListener("mouseover", e => {
+    if (e.target.classList.contains("cycleCell") && e.target.dataset.stage) {
+        const { stage, cycle, instId } = e.target.dataset;
+        tooltip.innerHTML = `Stage: ${stage}<br>Cycle: ${cycle}<br>Instruction: s${instId}`;
+        tooltip.classList.add("visible");
+    }
+});
+
+document.addEventListener("mousemove", e => {
+    if (tooltip.classList.contains("visible")) {
+        tooltip.style.left = (e.clientX + 15) + "px";
+        tooltip.style.top = (e.clientY + 15) + "px";
+    }
+});
+
+document.addEventListener("mouseout", e => {
+    if (e.target.classList.contains("cycleCell")) {
+        tooltip.classList.remove("visible");
+    }
+});
